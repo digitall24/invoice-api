@@ -2,7 +2,8 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const fs = require("fs");
 const path = require("path");
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-core");
+const chromium = require("@sparticuz/chromium");
 
 const app = express();
 app.use(bodyParser.json({ type: "application/json", limit: "1mb" }));
@@ -21,13 +22,13 @@ app.post("/invoice", async (req, res) => {
   const fileName = `invoice_${Date.now()}.pdf`;
   const filePath = path.join(pdfFolder, fileName);
 
-  // HTML шаблон – тук ще сложим дизайна ти
+  // HTML шаблон
   const html = `
   <html lang="bg">
     <head>
       <meta charset="UTF-8">
       <style>
-        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; margin: 40px; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; margin: 40px; }
         h1 { text-align: center; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #000; padding: 6px; text-align: left; }
@@ -67,21 +68,28 @@ app.post("/invoice", async (req, res) => {
 
   try {
     const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
     });
+
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
     await page.pdf({ path: filePath, format: "A4" });
     await browser.close();
 
-    const pdfUrl = `https://invoice-api-na2i.onrender.com/generated/${fileName}`;
+    const pdfUrl = `https://${req.headers.host}/generated/${fileName}`;
     res.json({ pdfUrl });
   } catch (err) {
-    console.error(err);
+    console.error("❌ PDF Generation Error:", err);
     res.status(500).json({ error: "Грешка при генериране на PDF" });
   }
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
