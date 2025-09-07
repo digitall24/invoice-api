@@ -24,7 +24,18 @@ app.post("/invoice", (req, res) => {
   const total = qty * price;
 
   // Име на PDF файла
-  const fileName = `${firm}_${Date.now()}.pdf`;
+  // Функция за безопасно ASCII име
+function slugify(text) {
+  return text.toString().normalize("NFD")           // нормализиране
+             .replace(/[\u0300-\u036f]/g, "")     // маха диакритики
+             .replace(/\s+/g, "_")               // интервали → _
+             .replace(/[^\w\-]+/g, "")           // маха всички не-ASCII символи
+             .replace(/\_\_+/g, "_")             // двойни _ → единични
+             .replace(/^_+/, "")                 // маха _ от начало
+             .replace(/_+$/, "");                // маха _ от край
+}
+
+const fileName = `${slugify(firm)}_${Date.now()}.pdf`;;
   const filePath = path.join(pdfFolder, fileName);
 
   const doc = new PDFDocument();
